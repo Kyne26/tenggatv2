@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      try {
+        var t =
+          JSON.parse(localStorage.getItem("tenggat:v1") || "{}").theme ||
+          "auto";
+        if (
+          t === "dark" ||
+          (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches)
+        )
+          document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
+    <style>
+      html {
+        background: #fdfdfe;
+      }
+      html.dark {
+        background: #18191c;
+      }
+    </style>
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Tambah · Tenggat</title>
+    <meta name="theme-color" content="#1a73e8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icons/favicon.svg" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="assets/css/output.css" />
+  </head>
+  <body class="bg-paper text-ink" data-page="add">
+    <div id="nav"></div>
+    <main class="pt-14 pb-28 md:pl-64 md:pb-10">
+      <div id="app" class="mx-auto max-w-lg px-4 pt-6"></div>
+    </main>
+    <div id="toast"></div>
+    <script type="module" src="assets/js/pages/add.js"></script>
+  </body>
+</html>
