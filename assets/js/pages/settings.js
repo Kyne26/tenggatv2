@@ -15,6 +15,40 @@ import { confirmDialog } from "../components/modal.js";
 
 const app = document.getElementById("app");
 
+// ---- pasang aplikasi (PWA) ----
+let promptEv = null; // event "beforeinstallprompt" dari browser (Chrome/Edge/Android)
+const isStandalone = () =>
+  matchMedia("(display-mode: standalone)").matches ||
+  navigator.standalone === true;
+const isIos = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
+
+function drawInstall() {
+  const box = document.getElementById("inst-box");
+  if (!box) return;
+  if (isStandalone()) {
+    box.innerHTML = `<p class="text-sm text-ok">Aplikasi sudah terpasang di perangkat ini.</p>`;
+  } else if (promptEv) {
+    box.innerHTML = `<button type="button" id="inst" class="btn">Install</button>`;
+  } else if (isIos()) {
+    box.innerHTML = `<p class="text-sm text-mute">Di iPhone/iPad: buka lewat Safari, ketuk <b>Bagikan</b>, lalu pilih <b>Tambah ke Layar Utama</b>.</p>`;
+  } else {
+    box.innerHTML = `<p class="text-sm text-mute">Tombol install belum tersedia. Buka lewat HTTPS di Chrome/Edge, lalu coba lagi. Atau pakai menu browser → Instal aplikasi.</p>`;
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); // tahan prompt bawaan, kita tampilkan lewat tombol sendiri
+  promptEv = e;
+  drawInstall();
+});
+window.addEventListener("appinstalled", () => {
+  promptEv = null;
+  drawInstall();
+  toast("Aplikasi berhasil dipasang");
+});
+
 function draw() {
   app.innerHTML = `
   <h1 class="mb-6 text-2xl font-medium">Pengaturan</h1>
@@ -32,6 +66,11 @@ function draw() {
         )
         .join("")}
     </div>
+  </section>
+  <section class="mb-8 border-b border-line pb-8">
+    <h2 class="mb-1 font-medium">Pasang aplikasi</h2>
+    <p class="mb-3 text-sm text-mute">Pasang Tenggat ke layar utama supaya bisa dibuka seperti aplikasi biasa, juga saat offline.</p>
+    <div id="inst-box"></div>
   </section>
   <section class="mb-8 border-b border-line pb-8">
     <h2 class="mb-1 font-medium">Cadangan data</h2>
@@ -55,6 +94,7 @@ function draw() {
       <div class="flex items-center gap-3"><p class="flex-1 text-sm">Semua data aplikasi dan reset total</p><button type="button" id="rs" class="btn !bg-danger">Hapus semua</button></div>
     </div>
   </section>`;
+  drawInstall();
 }
 
 app.addEventListener("click", async (e) => {
@@ -65,6 +105,14 @@ app.addEventListener("click", async (e) => {
     return draw();
   }
   const id = e.target.closest("button")?.id;
+  if (id === "inst" && promptEv) {
+    const ev = promptEv;
+    promptEv = null; // event cuma bisa dipakai sekali
+    ev.prompt();
+    const { outcome } = await ev.userChoice;
+    if (outcome !== "accepted") toast("Pemasangan dibatalkan");
+    drawInstall();
+  }
   if (id === "ex") {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(
