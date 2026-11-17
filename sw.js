@@ -1,4 +1,4 @@
-const V = "tenggat-v3";
+const V = "tenggat-v4";
 const ASSETS = [
   "./",
   "index.html",
@@ -14,6 +14,7 @@ const ASSETS = [
   "assets/js/app.js",
   "assets/js/core/date-utils.js",
   "assets/js/core/store.js",
+  "assets/js/core/notify.js",
   "assets/js/parser/parse-message.js",
   "assets/js/components/nav.js",
   "assets/js/components/task-item.js",
@@ -44,6 +45,17 @@ self.addEventListener("activate", (e) =>
       .then(() => clients.claim()),
   ),
 );
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((l) =>
+        l.length ? l[0].focus() : clients.openWindow("index.html"),
+      ),
+  );
+});
 
 // Network-first: kalau online selalu ambil file terbaru, kalau offline baru pakai cache.
 self.addEventListener("fetch", (e) => {

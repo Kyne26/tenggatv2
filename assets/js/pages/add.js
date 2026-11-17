@@ -48,10 +48,13 @@ function show(p, kind) {
   $("#pn").innerHTML =
     kind === "ok"
       ? `<span class="text-ok">${icon("check", "h-5 w-5 shrink-0", 2.4)}</span><span>Tanggal dibaca dari “${esc(p.from)}”. Periksa dulu sebelum disimpan.</span>`
-      : kind === "miss"
-        ? `<span class="text-danger">${icon("alert", "h-5 w-5 shrink-0")}</span><span class="text-danger">Tanggal tidak terbaca. Isi sendiri ya.</span>`
-        : '<span class="text-mute">Isi detail tenggatnya.</span>';
+      : kind === "pre"
+        ? `<span class="text-mute">${icon("check", "h-5 w-5 shrink-0", 2.4)}</span><span>Teks tidak menyebut tanggal, jadi dipakai tanggal yang kamu pilih di kalender. Periksa dulu sebelum disimpan.</span>`
+        : kind === "miss"
+          ? `<span class="text-danger">${icon("alert", "h-5 w-5 shrink-0")}</span><span class="text-danger">Teks ini tidak menyebut tanggal. Pilih tanggalnya di bawah.</span>`
+          : '<span class="text-mute">Isi detail tenggatnya.</span>';
   $("#f").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (kind === "miss") $("#f-date").focus({ preventScroll: true }); // tanggal belum ada: kursor langsung ke sana
 }
 
 $("#sample").onclick = () => {
@@ -61,6 +64,10 @@ $("#read").onclick = () => {
   const v = $("#msg").value.trim();
   if (!v) return $("#msg").focus();
   const p = parse(v);
+  if (!p.date && pre) {
+    p.date = pre; // tidak ada tanggal di teks: pakai tanggal yang dipilih dari kalender
+    return show(p, "pre");
+  }
   show(p, p.date ? "ok" : "miss");
 };
 $("#manual").onclick = () => {

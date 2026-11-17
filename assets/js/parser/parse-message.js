@@ -97,6 +97,44 @@ function takeCourse(str, o = {}) {
   return out.join(" ");
 }
 
+// cari kata kunci jenis/kegiatan, tapi lewati yang sedang dinegasikan ("tidak perlu seperti makalah")
+function findKw(text) {
+  const re = new RegExp(KW.source, "gi");
+  let m;
+  while ((m = re.exec(text))) {
+    const before = text.slice(Math.max(0, m.index - 30), m.index);
+    if (
+      !/\b(seperti|bukan|tanpa|jangan|tidak perlu|tak perlu|gak perlu|ga perlu)\b/i.test(
+        before,
+      )
+    )
+      return m;
+  }
+  return null;
+}
+
+// judul di baris pertama sebelum titik dua: "Pengantar sains data M7: dari file ..." -> "Pengantar Sains Data M7"
+function findHeading(text) {
+  const line =
+    text
+      .split(/\n/)
+      .map((l) => l.trim())
+      .find(Boolean) || "";
+  const i = line.indexOf(":");
+  if (i < 3) return "";
+  const head = stripLead(line.slice(0, i));
+  const first = clean(head.split(/\s+/)[0] || "").toLowerCase();
+  if (
+    !first ||
+    HARD.has(first) ||
+    KW.test(head) ||
+    /\d{1,2}\s*[\/-]\s*\d{1,2}|\b(jam|pukul)\b/i.test(head)
+  )
+    return "";
+  if (head.split(/\s+/).length > 7) return "";
+  return takeCourse(head, { loose: true, max: 7 });
+}
+
 export function parse(text) {
   const today = getToday();
   const t = text.toLowerCase().replace(/jum['’]at/g, "jumat"),
@@ -158,24 +196,31 @@ export function parse(text) {
   }
 
   // nama kegiatan (course) dan jenis (title)
-  let course = "",
+  let course = findHeading(text),
     title = "";
-  const kw = text.match(KW);
+  const kw = findKw(text);
   if (kw) {
     const w = kw[0];
     if (IS_EVENT.test(w)) {
-      course = takeCourse(text.slice(kw.index), { max: 6 }); // "lomba marathon" -> "Lomba Marathon"
+      if (course) title = w[0].toUpperCase() + w.slice(1).toLowerCase();
+      else course = takeCourse(text.slice(kw.index), { max: 6 }); // "lomba marathon" -> "Lomba Marathon"
     } else {
       title = /^(uts|uas)$/i.test(w)
         ? w.toUpperCase()
         : w[0].toUpperCase() + w.slice(1).toLowerCase();
-      course = takeCourse(text.slice(kw.index + w.length)); // "tugas Basis Data" -> "Basis Data"
+      if (!course) course = takeCourse(text.slice(kw.index + w.length)); // "tugas Basis Data" -> "Basis Data"
     }
   }
   if (!course) course = takeCourse(stripLead(text), { kw: true });
   if (!course)
     course = takeCourse(stripLead(text), { kw: true, loose: true, max: 6 });
-  if (!title && !kw && /deadline|dikumpul|tenggat|paling lambat/i.test(text))
+  if (
+    !title &&
+    !kw &&
+    /deadline|dikumpul|tenggat|paling lambat|kerjakan|buat dalam|buatlah|jelaskan|penjelasan|analisis/i.test(
+      text,
+    )
+  )
     title = "Tugas";
 
   return {
@@ -184,5 +229,6 @@ export function parse(text) {
     date: pick ? iso(pick.d) : "",
     from: pick ? pick.s : "",
     time,
+    note: text.trim().slice(0, 600), // detail lain (format, lokasi materi) ikut tersimpan
   };
 }

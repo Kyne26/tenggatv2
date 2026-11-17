@@ -1,8 +1,19 @@
 import "../app.js";
-import { getTasks } from "../core/store.js";
-import { today, iso, fromIso, addD, MN, DN, esc } from "../core/date-utils.js";
+import { getTasks, addTask } from "../core/store.js";
+import {
+  today,
+  iso,
+  fromIso,
+  addD,
+  pad,
+  MN,
+  DN,
+  esc,
+} from "../core/date-utils.js";
 import { taskItem, bindActions, cvar } from "../components/task-item.js";
 import { icon } from "../components/icons.js";
+import { toast } from "../components/toast.js";
+import { TYPES } from "../components/task-form.js";
 
 const app = document.getElementById("app");
 const T = today(),
@@ -13,6 +24,7 @@ let view = { y: b0.getFullYear(), m: b0.getMonth() };
 const cmp = (a, b) =>
   a.date + (a.time || "99") < b.date + (b.time || "99") ? -1 : 1;
 const nav = "grid h-10 w-10 place-items-center rounded-full hover:bg-surface";
+const wide = matchMedia("(min-width:1024px)");
 const COLS = "grid-cols-[1.75rem_repeat(7,minmax(0,1fr))]"; // kolom kiri = jumlah tenggat per minggu
 
 function render() {
@@ -75,18 +87,48 @@ function render() {
     <aside class="mt-8 lg:mt-0">
       <h2 class="text-lg font-medium">${fromIso(sel).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}</h2>
       ${dayTasks.length ? dayTasks.map(taskItem).join("") : '<p class="py-3 text-sm text-mute">Tidak ada tenggat di tanggal ini.</p>'}
-      <a href="tambah.html?date=${sel}" class="btn-text -ml-4 mt-2">${icon("plus", "h-5 w-5")} Tambah tenggat</a>
+      <form id="qf" class="mt-3 grid gap-3 rounded-2xl border border-line p-3">
+        <input id="q-course" required autocomplete="off" class="field" placeholder="Tambah tenggat di tanggal ini" aria-label="Kegiatan">
+        <div class="grid grid-cols-2 gap-3">
+          <input id="q-title" list="q-types" autocomplete="off" class="field" placeholder="Jenis" aria-label="Jenis (boleh kosong)">
+          <input id="q-time" type="time" class="field" aria-label="Jam (boleh kosong)">
+        </div>
+        <datalist id="q-types">${TYPES.map((t) => `<option value="${t}">`).join("")}</datalist>
+        <label class="grid gap-1.5 text-sm text-mute">Ingatkan saya pada (boleh kosong)<input id="q-remind" type="datetime-local" class="field"></label>
+        <div class="-mt-1 flex flex-wrap gap-1">
+          <button type="button" data-r="0" class="btn-line !px-3 !py-1.5 !text-[13px]">Saat tenggat</button>
+          <button type="button" data-r="60" class="btn-line !px-3 !py-1.5 !text-[13px]">1 jam sebelum</button>
+          <button type="button" data-r="1440" class="btn-line !px-3 !py-1.5 !text-[13px]">1 hari sebelum</button>
+          <button type="button" data-r="x" class="btn-text !px-3 !py-1.5 !text-[13px]">Hapus</button>
+        </div>
+        <div class="flex items-center gap-1">
+          <button class="btn">Simpan</button>
+          <a href="tambah.html?date=${sel}" class="btn-text">Tempel pengumuman</a>
+        </div>
+      </form>
     </aside>
   </div>`;
 }
 
 app.addEventListener("click", (e) => {
+  const rb = e.target.closest("[data-r]");
+  if (rb) {
+    const r = app.querySelector("#q-remind");
+    if (rb.dataset.r === "x") return (r.value = "");
+    const t = new Date(
+      sel + "T" + (app.querySelector("#q-time").value || "09:00"),
+    );
+    t.setMinutes(t.getMinutes() - +rb.dataset.r);
+    r.value = iso(t) + "T" + pad(t.getHours()) + ":" + pad(t.getMinutes());
+    return;
+  }
   const d = e.target.closest("[data-d]");
   if (d) {
     sel = d.dataset.d;
     const x = fromIso(sel);
     view = { y: x.getFullYear(), m: x.getMonth() };
-    return render();
+    render();
+    return focusForm();
   }
   const id = e.target.closest("button")?.id;
   if (id === "pm") {
@@ -111,5 +153,31 @@ app.addEventListener("click", (e) => {
     render();
   }
 });
+// setelah pilih tanggal: di layar lebar kursor langsung masuk ke isian, di HP layar digeser ke daftar + isian
+function focusForm() {
+  const a = app.querySelector("aside");
+  if (!a) return;
+  if (wide.matches) a.querySelector("#q-course")?.focus();
+  else a.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+app.addEventListener("submit", (e) => {
+  if (e.target.id !== "qf") return;
+  e.preventDefault();
+  const f = e.target;
+  addTask({
+    course: f.querySelector("#q-course").value.trim(),
+    title: f.querySelector("#q-title").value.trim(),
+    date: sel,
+    time: f.querySelector("#q-time").value,
+    note: "",
+    remind: f.querySelector("#q-remind").value,
+    reminded: false,
+  });
+  render();
+  toast("Tenggat disimpan");
+  if (wide.matches) app.querySelector("#q-course")?.focus(); // lanjut tambah yang lain
+});
+
 bindActions(app, render);
 render();

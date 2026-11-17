@@ -12,6 +12,7 @@ import {
 } from "../core/store.js";
 import { toast } from "../components/toast.js";
 import { confirmDialog } from "../components/modal.js";
+import { perm, ask, show } from "../core/notify.js";
 
 const app = document.getElementById("app");
 
@@ -49,6 +50,20 @@ window.addEventListener("appinstalled", () => {
   toast("Aplikasi berhasil dipasang");
 });
 
+function drawNotif() {
+  const box = document.getElementById("notif-box");
+  if (!box) return;
+  const p = perm();
+  box.innerHTML =
+    p === "unsupported"
+      ? '<p class="text-sm text-mute">Browser ini belum mendukung notifikasi. Di iPhone (iOS 16.4 ke atas), pasang dulu ke Layar Utama lalu buka lewat ikon aplikasi.</p>'
+      : p === "granted"
+        ? '<p class="mb-3 text-sm text-ok">Notifikasi aktif.</p><button type="button" id="nt" class="btn-line">Kirim notifikasi tes</button>'
+        : p === "denied"
+          ? '<p class="text-sm text-danger">Notifikasi diblokir. Aktifkan lewat pengaturan HP atau browser untuk Tenggat.</p>'
+          : '<button type="button" id="np" class="btn">Aktifkan notifikasi</button>';
+}
+
 function draw() {
   app.innerHTML = `
   <h1 class="mb-6 text-2xl font-medium">Pengaturan</h1>
@@ -66,6 +81,11 @@ function draw() {
         )
         .join("")}
     </div>
+  </section>
+  <section class="mb-8 border-b border-line pb-8">
+    <h2 class="mb-1 font-medium">Notifikasi pengingat</h2>
+    <p class="mb-3 text-sm text-mute">Atur waktu pengingat di formulir tenggat. Notifikasi muncul saat aplikasi terbuka atau baru dibuka.</p>
+    <div id="notif-box"></div>
   </section>
   <section class="mb-8 border-b border-line pb-8">
     <h2 class="mb-1 font-medium">Pasang aplikasi</h2>
@@ -95,6 +115,7 @@ function draw() {
     </div>
   </section>`;
   drawInstall();
+  drawNotif();
 }
 
 app.addEventListener("click", async (e) => {
@@ -105,6 +126,11 @@ app.addEventListener("click", async (e) => {
     return draw();
   }
   const id = e.target.closest("button")?.id;
+  if (id === "np") {
+    await ask();
+    drawNotif();
+  }
+  if (id === "nt") await show("Tenggat", "Notifikasi berfungsi.", "tes");
   if (id === "inst" && promptEv) {
     const ev = promptEv;
     promptEv = null; // event cuma bisa dipakai sekali

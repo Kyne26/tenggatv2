@@ -1,7 +1,7 @@
-import { esc, rel, longDate } from "../core/date-utils.js";
+import { esc, rel, longDate, iso, pad } from "../core/date-utils.js";
 
 const L = "grid gap-1.5 text-sm text-mute";
-const TYPES = [
+export const TYPES = [
   "Tugas",
   "Kuis",
   "UTS",
@@ -22,6 +22,13 @@ export const taskFields = (v = {}) => `
     <label class="${L}">Jam (boleh kosong)<input id="f-time" type="time" class="field" value="${esc(v.time || "")}"></label>
   </div>
   <p id="f-hint" class="-mt-2 text-sm text-mute"></p>
+  <label class="${L}">Ingatkan saya pada (boleh kosong)<input id="f-remind" type="datetime-local" class="field" value="${esc(v.remind || "")}"></label>
+  <div class="-mt-2 flex flex-wrap gap-1">
+    <button type="button" data-r="0" class="btn-line !px-3 !py-1.5 !text-[13px]">Saat tenggat</button>
+    <button type="button" data-r="60" class="btn-line !px-3 !py-1.5 !text-[13px]">1 jam sebelum</button>
+    <button type="button" data-r="1440" class="btn-line !px-3 !py-1.5 !text-[13px]">1 hari sebelum</button>
+    <button type="button" data-r="x" class="btn-text !px-3 !py-1.5 !text-[13px]">Hapus</button>
+  </div>
   <label class="${L}">Catatan (boleh kosong)<textarea id="f-note" rows="3" class="field resize-y">${esc(v.note || "")}</textarea></label>`;
 
 export const readFields = (root) => ({
@@ -30,6 +37,8 @@ export const readFields = (root) => ({
   date: root.querySelector("#f-date").value,
   time: root.querySelector("#f-time").value,
   note: root.querySelector("#f-note").value.trim(),
+  remind: root.querySelector("#f-remind").value,
+  reminded: false,
 });
 
 export function setFields(root, v) {
@@ -37,6 +46,7 @@ export function setFields(root, v) {
   root.querySelector("#f-title").value = v.title || "";
   root.querySelector("#f-date").value = v.date || "";
   root.querySelector("#f-time").value = v.time || "";
+  root.querySelector("#f-remind").value = v.remind || "";
   root.querySelector("#f-note").value = v.note || "";
 }
 
@@ -48,6 +58,18 @@ export function bindHint(root) {
   };
   d.addEventListener("input", upd);
   d.addEventListener("change", upd);
+  root.querySelectorAll("[data-r]").forEach((b) => {
+    b.onclick = () => {
+      const r = root.querySelector("#f-remind");
+      if (b.dataset.r === "x") return (r.value = "");
+      if (!d.value) return d.focus();
+      const t = new Date(
+        d.value + "T" + (root.querySelector("#f-time").value || "09:00"),
+      );
+      t.setMinutes(t.getMinutes() - +b.dataset.r);
+      r.value = iso(t) + "T" + pad(t.getHours()) + ":" + pad(t.getMinutes());
+    };
+  });
   upd();
   return upd;
 }

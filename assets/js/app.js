@@ -1,6 +1,7 @@
 import { getTheme } from "./core/store.js";
 import { mountNav } from "./components/nav.js";
 import { toast } from "./components/toast.js";
+import { startChecker } from "./core/notify.js";
 
 export const applyTheme = () => {
   const t = getTheme();
@@ -8,9 +9,18 @@ export const applyTheme = () => {
     t === "dark" ||
     (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("dark", dark);
+  // warna status bar / bar navigasi HP ikut tema aplikasi (sama dengan latar --bg)
+  document
+    .querySelectorAll('meta[name="theme-color"]')
+    .forEach((m) => m.remove());
+  const m = document.createElement("meta");
+  m.name = "theme-color";
+  m.content = dark ? "#18191c" : "#fdfdfe";
+  document.head.appendChild(m);
 };
 applyTheme();
 mountNav(document.body.dataset.page);
+startChecker();
 
 // ---- animasi pindah halaman: isi lama memudar, halaman baru muncul berurutan (seperti saat refresh), tanpa geser ----
 const root = document.documentElement;
